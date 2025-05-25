@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.frontend"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973" // Updated to match plugin requirements
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -27,7 +27,7 @@ android {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionName = "1.0.0"  // Reset to default version name format
     }
 
     buildTypes {
