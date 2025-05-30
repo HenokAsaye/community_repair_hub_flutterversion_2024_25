@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-// import 'features/dashboard/presentation/screens/citizen_dashboard_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'config/routes/app_router.dart';
+import 'features/dashboard/presentation/screens/citizen_dashboard_screen.dart';
 // import 'features/dashboard/presentation/screens/Detail/Repair_Team_Detail.dart';
-import './features/dashboard/presentation/screens/team_dashboard_screen.dart';
+// import './features/dashboard/presentation/screens/team_dashboard_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -30,7 +32,7 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const RepairTeamDashboard(),
+      home: const CitizenDashboard(),
     );
   }
 }
