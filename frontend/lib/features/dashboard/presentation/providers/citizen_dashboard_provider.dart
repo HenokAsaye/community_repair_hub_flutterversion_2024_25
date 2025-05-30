@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/models/report.dart';
@@ -6,8 +7,30 @@ import '../../data/mock_data.dart';
 
 // API Service provider
 final apiServiceProvider = Provider<ApiService>((ref) {
-  // For web testing (Chrome) - ensure this matches your backend server port
-  return ApiService(baseUrl: 'http://localhost:5500');
+  // Use localhost since it was working before
+  const serverPort = '5500';
+  
+  // Determine the correct base URL based on the platform
+  String baseUrl;
+  
+  // Check if we're running on web
+  if (kIsWeb) {
+    // For web, use the current origin
+    baseUrl = 'http://localhost:$serverPort';
+  } else {
+    // For physical devices, use your computer's actual IP address
+    // This is your Wi-Fi IP address from ipconfig
+    baseUrl = 'http://192.168.209.57:$serverPort';
+    
+    // For Android emulator, you can use 10.0.2.2 which is a special alias
+    // baseUrl = 'http://10.0.2.2:$serverPort';
+  }
+  
+  // For debugging purposes only
+  print('Using API base URL: $baseUrl');
+  
+  // Return the API service with the appropriate URL
+  return ApiService(baseUrl: baseUrl);
 });
 
 // Citizen API Client provider
@@ -96,26 +119,33 @@ class IssuesState {
 // Issues notifier provider
 class IssuesNotifier extends StateNotifier<IssuesState> {
   final CitizenApiClient _apiClient;
+  final ApiService _apiService;
 
-  IssuesNotifier(this._apiClient) : super(IssuesState());
+  IssuesNotifier(this._apiClient, this._apiService) : super(IssuesState());
 
   Future<void> fetchIssues() async {
     state = state.copyWith(status: IssuesStateStatus.loading);
     
     try {
-      print('Attempting to fetch issues from API');
+      // Log the base URL
+      print('Attempting to fetch issues from API at ${_apiService.baseUrl}');
+      
+      // Fetch issues from the API
+      print('Calling getIssues() method...');
       final issues = await _apiClient.getIssues();
       
       if (issues.isEmpty) {
-        print('API returned empty issues list, using mock data instead');
+        print('API returned empty issues list');
+        print('WARNING: Using mock data instead of real data');
         final mockIssues = MockDataProvider.getMockIssues();
         state = state.copyWith(
           status: IssuesStateStatus.success,
           issues: mockIssues,
-          errorMessage: null,
+          errorMessage: 'No data from server - using mock data',
         );
       } else {
         print('API returned ${issues.length} issues');
+        print('First issue: ${issues.isNotEmpty ? issues.first.category : "none"}');
         state = state.copyWith(
           status: IssuesStateStatus.success,
           issues: issues,
@@ -124,12 +154,13 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
       }
     } catch (e) {
       print('Error fetching issues: $e');
-      print('Using mock data as fallback');
+      print('ERROR DETAILS: ${e.toString()}');
+      print('WARNING: Using mock data as fallback due to error');
       final mockIssues = MockDataProvider.getMockIssues();
       state = state.copyWith(
-        status: IssuesStateStatus.success,
+        status: IssuesStateStatus.error,
         issues: mockIssues,
-        errorMessage: null,
+        errorMessage: 'Connection error: ${e.toString()}',
       );
     }
   }
@@ -198,7 +229,8 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
 // Issues provider
 final issuesProvider = StateNotifierProvider<IssuesNotifier, IssuesState>((ref) {
   final apiClient = ref.watch(citizenApiClientProvider);
-  return IssuesNotifier(apiClient);
+  final apiService = ref.watch(apiServiceProvider);
+  return IssuesNotifier(apiClient, apiService);
 });
 
 // Filtered issues provider
