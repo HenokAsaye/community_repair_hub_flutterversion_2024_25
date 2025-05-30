@@ -11,6 +11,7 @@ class TeamReportCard extends StatelessWidget {
   final String priority;
   final DateTime date;
   final VoidCallback? onViewPressed;
+  final Function(String)? onStatusChanged;
 
   const TeamReportCard({
     Key? key,
@@ -21,6 +22,7 @@ class TeamReportCard extends StatelessWidget {
     required this.priority,
     required this.date,
     this.onViewPressed,
+    this.onStatusChanged,
   }) : super(key: key);
 
   @override
