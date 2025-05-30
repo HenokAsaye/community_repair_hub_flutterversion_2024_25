@@ -1,77 +1,53 @@
 // Team Dashboard Screen 
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/dashboard_app_bar.dart';
 import '../widgets/dashboard_drawer.dart';
 import '../widgets/dashboard_filter.dart';
 import '../widgets/team_report_card.dart';
+import '../providers/team_dashboard_provider.dart';
 
-class RepairTeamDashboard extends StatefulWidget {
+class RepairTeamDashboard extends ConsumerStatefulWidget {
   const RepairTeamDashboard({super.key});
 
   @override
-  State<RepairTeamDashboard> createState() => _RepairTeamDashboardState();
+  ConsumerState<RepairTeamDashboard> createState() => _RepairTeamDashboardState();
 }
 
-class _RepairTeamDashboardState extends State<RepairTeamDashboard> {
+class _RepairTeamDashboardState extends ConsumerState<RepairTeamDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String _searchQuery = '';
   IssueStatus _selectedStatus = IssueStatus.all;
 
-  // Sample data - replace with your actual data source
-  final List<Map<String, dynamic>> _reports = [
-    {
-      'id': '1',
-      'title': 'Pothole on Main Street',
-      'description': 'Large pothole causing traffic issues and potential damage to vehicles. Needs immediate attention.',
-      'status': 'pending',
-      'date': DateTime.now().subtract(const Duration(days: 2)),
-      'location': 'Main Street, Downtown',
-      'imageUrl': null, // No image for this report
-      'priority': 'High',
-    },
-    {
-      'id': '2',
-      'title': 'Broken Street Light',
-      'description': 'Street light not working for 3 days, making the area unsafe at night.',
-      'status': 'in progress',
-      'date': DateTime.now().subtract(const Duration(days: 5)),
-      'location': 'Oak Avenue, Near Central Park',
-      'imageUrl': 'https://example.com/streetlight.jpg',
-      'priority': 'Medium',
-    },
-    {
-      'id': '3',
-      'title': 'Garbage Pile-up',
-      'description': 'Garbage has been piling up for over a week, causing bad odor and attracting pests.',
-      'status': 'completed',
-      'date': DateTime.now().subtract(const Duration(days: 10)),
-      'location': 'Elm Street, Block 4',
-      'imageUrl': 'https://example.com/garbage.jpg',
-      'priority': 'Low',
-    },
-  ];
-
-  List<Map<String, dynamic>> get _filteredReports {
-    return _reports.where((report) {
-      final searchLower = _searchQuery.toLowerCase();
-      final matchesSearch = _searchQuery.isEmpty ||
-          report['title'].toLowerCase().contains(searchLower) ||
-          report['description'].toLowerCase().contains(searchLower) ||
-          report['location'].toLowerCase().contains(searchLower);
-
-      final matchesStatus = _selectedStatus == IssueStatus.all ||
-          report['status'] == _selectedStatus.toString().split('.').last;
-
-      return matchesSearch && matchesStatus;
-    }).toList();
+  @override
+  void initState() {
+    super.initState();
+    // Fetch issues when the screen loads
+    Future.microtask(() => ref.read(teamIssuesProvider.notifier).fetchIssues());
   }
 
-  void _onViewReportDetails(String reportId) {
+  void _onViewReportDetails(String? reportId) {
+    if (reportId == null) return;
     // Navigate to report details screen
     // Navigator.push(context, MaterialPageRoute(
     //   builder: (context) => ReportDetailsScreen(reportId: reportId),
     // ));
+  }
+
+  // Helper method to determine priority based on category
+  String getPriorityFromCategory(String category) {
+    // This is a simple example - you can customize this logic
+    switch (category.toLowerCase()) {
+      case 'road':  // Assuming 'road' is a category for potholes, etc.
+        return 'High';
+      case 'electricity': // For street lights, etc.
+        return 'Medium';
+      case 'waste': // For garbage issues
+        return 'Low';
+      default:
+        return 'Medium';
+    }
   }
 
   @override
@@ -98,27 +74,37 @@ class _RepairTeamDashboardState extends State<RepairTeamDashboard> {
             selectedStatus: _selectedStatus,
             onSearchChanged: (query) {
               setState(() => _searchQuery = query);
+              ref.read(teamIssuesProvider.notifier).setSearchQuery(query);
             },
             onStatusChanged: (status) {
               setState(() => _selectedStatus = status);
+              // Map IssueStatus enum to backend status string if needed
+              String statusFilter = '';
+              if (status != IssueStatus.all) {
+                statusFilter = status.toString().split('.').last;
+              }
+              ref.read(teamIssuesProvider.notifier).setStatusFilter(statusFilter);
             },
           ),
           
           // Filter indicator
-          if (_selectedStatus != IssueStatus.all || _searchQuery.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              width: double.infinity,
-              color: Colors.grey[100],
-              child: Row(
-                children: [
-                  Text(
-                    'Showing ${_filteredReports.length} ${_filteredReports.length == 1 ? 'result' : 'results'}\n',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
+          Consumer(builder: (context, ref, child) {
+            final filteredIssues = ref.watch(filteredTeamIssuesProvider);
+            
+            if (_selectedStatus != IssueStatus.all || _searchQuery.isNotEmpty) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                width: double.infinity,
+                color: Colors.grey[100],
+                child: Row(
+                  children: [
+                    Text(
+                      'Showing ${filteredIssues.length} ${filteredIssues.length == 1 ? 'result' : 'results'}\n',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
                   if (_selectedStatus != IssueStatus.all)
                     Container(
                       margin: const EdgeInsets.only(left: 8),
@@ -158,68 +144,138 @@ class _RepairTeamDashboardState extends State<RepairTeamDashboard> {
                           _searchQuery = '';
                           _selectedStatus = IssueStatus.all;
                         });
+                        ref.read(teamIssuesProvider.notifier).clearFilters();
                       },
                       child: const Text('Clear all', style: TextStyle(fontSize: 12)),
                     ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
           
           // Reports List
           Expanded(
-            child: _filteredReports.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 64,
-                          color: Colors.grey[400],
+            child: Consumer(builder: (context, ref, child) {
+              final issuesState = ref.watch(teamIssuesProvider);
+              final filteredIssues = ref.watch(filteredTeamIssuesProvider);
+              
+              // Show loading indicator
+              if (issuesState.status == TeamIssuesStateStatus.loading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              // Show error message
+              if (issuesState.status == TeamIssuesStateStatus.error) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading issues',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No reports found',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        issuesState.errorMessage ?? 'Unknown error',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
-                        if (_searchQuery.isNotEmpty || _selectedStatus != IssueStatus.all)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _searchQuery = '';
-                                  _selectedStatus = IssueStatus.all;
-                                });
-                              },
-                              child: const Text('Clear filters'),
-                            ),
-                          ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    itemCount: _filteredReports.length,
-                    itemBuilder: (context, index) {
-                      final report = _filteredReports[index];
-                      return TeamReportCard(
-                        title: report['title'],
-                        location: report['location'],
-                        status: report['status'],
-                        date: report['date'],
-                        priority: report['priority'],
-                        imageUrl: report['imageUrl'],
-                        onViewPressed: () => _onViewReportDetails(report['id']),
-                      );
-                    },
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => ref.read(teamIssuesProvider.notifier).fetchIssues(),
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
+                );
+              }
+              
+              // Show empty state
+              if (filteredIssues.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No reports found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (_searchQuery.isNotEmpty || _selectedStatus != IssueStatus.all)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                                _selectedStatus = IssueStatus.all;
+                              });
+                              ref.read(teamIssuesProvider.notifier).clearFilters();
+                            },
+                            child: const Text('Clear filters'),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+              
+              // Show issues list
+              return ListView.builder(
+                padding: const EdgeInsets.only(bottom: 24),
+                itemCount: filteredIssues.length,
+                itemBuilder: (context, index) {
+                  final issue = filteredIssues[index];
+                  return TeamReportCard(
+                    title: issue.category,
+                    location: '${issue.locations.city}, ${issue.locations.specificArea}',
+                    status: issue.status.toLowerCase(),
+                    date: issue.createdAt,
+                    imageUrl: issue.imageURL.startsWith('http') 
+                        ? issue.imageURL 
+                        : 'http://localhost:5500${issue.imageURL}', // Using port 5500 for backend
+                    priority: getPriorityFromCategory(issue.category), // Determine priority from category
+                    onViewPressed: () => _onViewReportDetails(issue.id),
+                    onStatusChanged: (newStatus) {
+                      // Update issue status in the backend
+                      if (issue.id != null) {
+                        ref.read(teamIssuesProvider.notifier).updateIssueStatus(issue.id!, newStatus);
+                      }
+                    },
+                  );
+                },
+              );
+            }),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Refresh the issues list
+          ref.read(teamIssuesProvider.notifier).fetchIssues();
+        },
+        backgroundColor: Theme.of(context).primaryColor,
+        child: const Icon(Icons.refresh, color: Colors.white),
       ),
     );
   }
