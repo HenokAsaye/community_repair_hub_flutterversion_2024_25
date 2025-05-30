@@ -18,11 +18,12 @@ class CitizenReportCard extends StatelessWidget {
     required this.status,
     required this.date,
     this.onViewPressed,
-    this.showChatButton = false,
+    this.showChatButton = true,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    print('Building CitizenReportCard: $title');
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       elevation: 2,
@@ -61,7 +62,8 @@ class CitizenReportCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  DateFormat('MMM d, y').format(date),
+                  // Handle potential date formatting issues
+                  _formatDate(date),
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,
@@ -102,6 +104,7 @@ class CitizenReportCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // Use min size to prevent unbounded height
               children: [
                 // Title
                 Text(
@@ -137,53 +140,33 @@ class CitizenReportCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 
-                // View Details Button
+                // View Details Button positioned at the bottom right
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: onViewPressed,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: Theme.of(context).primaryColor),
-                          ),
+                    OutlinedButton.icon(
+                      onPressed: onViewPressed,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(color: Theme.of(context).primaryColor),
                         ),
-                        icon: Icon(
-                          Icons.visibility_outlined,
-                          size: 16,
+                      ),
+
+                      icon: Icon(
+                        Icons.visibility_outlined,
+                        size: 16,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                      label: Text(
+                        'View Details',
+                        style: TextStyle(
                           color: Theme.of(context).primaryColor,
-                        ),
-                        label: Text(
-                          'View Details',
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    if (showChatButton) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: null,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                          icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                          label: const Text(
-                            'Chat',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],
@@ -211,6 +194,15 @@ class CitizenReportCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    try {
+      return DateFormat('MMM d, y').format(date);
+    } catch (e) {
+      print('Error formatting date: $e');
+      return 'Date unavailable';
+    }
   }
 
   Color _getStatusColor(String status) {
