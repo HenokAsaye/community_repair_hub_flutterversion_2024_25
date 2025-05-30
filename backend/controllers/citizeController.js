@@ -4,7 +4,26 @@ import Issues from "../models/Issue.js"
 
 export const getIssues = async (req, res) => {
     try {
+        console.log('getIssues called');
+        
+        // Log the database connection string (without sensitive info)
+        console.log('Using database:', process.env.MONGO_URI.split('/').pop());
+        
+        // Check if the Issues model is properly defined
+        console.log('Issues model:', Issues ? 'defined' : 'undefined');
+        
+        // Get the count of issues before querying
+        const count = await Issues.countDocuments();
+        console.log(`Total issues in database: ${count}`);
+        
         const issues = await Issues.find().sort({ createdAt: -1 });
+        console.log(`Retrieved ${issues.length} issues`);
+        
+        // Log the first issue if available
+        if (issues.length > 0) {
+            console.log('First issue ID:', issues[0]._id);
+            console.log('First issue category:', issues[0].category);
+        }
 
         return res.status(200).json({
             success: true,
@@ -12,6 +31,7 @@ export const getIssues = async (req, res) => {
             data: issues
         });
     } catch (error) {
+        console.error('Error in getIssues:', error);
         res.status(500).json({
             success: false,
             message: "Failed to retrieve issues",
