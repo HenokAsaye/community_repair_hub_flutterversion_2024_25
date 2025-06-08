@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Screens with prefix to avoid naming conflicts
 import 'features/auth/presentation/screens/login_screen.dart' as login_screen;
 import 'features/auth/presentation/screens/register_screen.dart'
     as register_screen;
