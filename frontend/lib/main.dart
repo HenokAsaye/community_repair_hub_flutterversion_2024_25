@@ -23,12 +23,12 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Community Repair Hub',
       debugShowCheckedModeBanner: false,
+      title: 'Community Repair Hub',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1B5E20), // Dark green
@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       routerConfig: appRouter, // Use the GoRouter configuration
+
     );
   }
 }
-
