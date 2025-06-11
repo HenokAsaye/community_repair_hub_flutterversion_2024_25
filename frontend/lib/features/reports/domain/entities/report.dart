@@ -1,6 +1,4 @@
 // Report Entity
-import 'dart:convert';
-
 class Report {
   final String id;
   final String category;
@@ -9,7 +7,6 @@ class Report {
   final String imageUrl;
   final String status;
   final String date;
-
   Report({
     required this.id,
     required this.category,
