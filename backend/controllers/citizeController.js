@@ -1,5 +1,6 @@
 import User from "../models/User.js"
 import Issues from "../models/Issue.js"
+import mongoose from "mongoose"
 
 
 export const getIssues = async (req, res) => {
@@ -152,5 +153,62 @@ export const searchByLocation = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error!", error: error.message });
+    }
+};
+
+// Get a single issue by ID
+export const getIssueById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log('=== GET ISSUE BY ID ===');
+        console.log('Fetching issue with ID:', id);
+        console.log('Request params:', req.params);
+        console.log('Request URL:', req.originalUrl);
+        
+        // Validate if the id is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            console.log('Invalid ObjectId format:', id);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format"
+            });
+        }
+        
+        console.log('Looking up issue in database...');
+        const issue = await Issues.findById(id);
+        
+        if (!issue) {
+            console.log('Issue not found with ID:', id);
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found"
+            });
+        }
+        
+        console.log('Found issue:');
+        console.log('  ID:', issue._id);
+        console.log('  Category:', issue.category);
+        console.log('  Image URL:', issue.imageURL);
+        console.log('  Full issue object:', JSON.stringify(issue, null, 2));
+        
+        // Check if the image URL is properly formatted
+        if (issue.imageURL) {
+            const fullImageUrl = `${req.protocol}://${req.get('host')}${issue.imageURL}`;
+            console.log('Full image URL would be:', fullImageUrl);
+        }
+        
+        return res.status(200).json({
+            success: true,
+            message: "Issue retrieved successfully",
+            data: issue
+        });
+    } catch (error) {
+        console.error('Error in getIssueById:', error);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: "Failed to retrieve issue",
+            error: error.message
+        });
     }
 };

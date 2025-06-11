@@ -1,5 +1,6 @@
-import Issues from "../models/Issue.js"
-import  User from "../models/User.js"
+import Issues from "../models/Issue.js";
+import User from "../models/User.js";
+import mongoose from "mongoose"; // Import mongoose for ObjectId validation
 export const TakeIssue = async (req, res) => {
     try {
         const { issueId, description, status } = req.body;
@@ -70,5 +71,56 @@ export const searchByLocation = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error!", error: error.message });
+    }
+};
+
+export const updateIssueStatus = async (req, res) => {
+    try {
+        const { id } = req.params; // Get ID from URL parameters
+        const { status, notes } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid issue ID format"
+            });
+        }
+
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: "Status is required"
+            });
+        }
+
+        const issue = await Issues.findById(id);
+
+        if (!issue) {
+            return res.status(404).json({
+                success: false,
+                message: "Issue not found"
+            });
+        }
+
+        issue.status = status;
+        if (notes) {
+            issue.lastStatusUpdateNotes = notes; // Example: using a dedicated field
+        }
+
+        const updatedIssue = await issue.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Issue status updated successfully",
+            data: updatedIssue
+        });
+
+    } catch (error) {
+        console.error('Error in updateIssueStatus (repairTeamController):', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update issue status",
+            error: error.message
+        });
     }
 };
