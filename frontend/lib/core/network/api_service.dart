@@ -105,7 +105,7 @@ class ApiService {
           return response;
         } catch (e) {
           if (e is DioException) {
-            lastError = e; // Update lastError with the latest DioException
+            lastError = e; 
             debugPrint('Fallback URL $fallbackUrl failed: ${e.message}');
           } else {
             debugPrint('Fallback URL $fallbackUrl error: $e');
