@@ -6,7 +6,8 @@ import '../widgets/dashboard_filter.dart';
 import '../widgets/citizen_report_card.dart';
 import '../providers/citizen_dashboard_provider.dart';
 import 'Detail/Citizen_Detail.dart';
-import '../../../../shared/models/report.dart';
+import '../../../../features/reports/presentation/screens/report_form_screen.dart';
+
 
 class CitizenDashboard extends ConsumerStatefulWidget {
   const CitizenDashboard({super.key});
@@ -47,7 +48,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     final reportData = {
       'imageUrl': issue.imageURL.startsWith('http') 
           ? issue.imageURL 
-          : 'http://localhost:5500${issue.imageURL}',
+          : 'http://192.168.1.3:5500${issue.imageURL}',
       'title': issue.category,
       'location': '${issue.locations.city}, ${issue.locations.specificArea}',
       'status': issue.status.toLowerCase(),
@@ -68,6 +69,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   @override
   Widget build(BuildContext context) {
     print('Building dashboard screen');
+
+
     
     return Scaffold(
       key: _scaffoldKey,
@@ -82,7 +85,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           // ));
         },
       ),
-      drawer: const DashboardDrawer(),
+      drawer: const DashboardDrawer(userRole: 'citizen'),
       body: Column(
         children: [
           // Search and Filter Bar
@@ -269,9 +272,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                     location: '${issue.locations.city}, ${issue.locations.specificArea}',
                     status: issue.status.toLowerCase(),
                     date: issue.createdAt,
-                    imageUrl: issue.imageURL.startsWith('http') 
-                        ? issue.imageURL 
-                        : 'http://localhost:5500${issue.imageURL}',
+                    imageUrl: issue.imageURL,
                     onViewPressed: () => _onViewReportDetails(issue.id),
                     showChatButton: issue.status.toLowerCase() != 'resolved',
                   );
@@ -283,13 +284,16 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to create new report screen
-          // Navigator.push(context, MaterialPageRoute(
-          //   builder: (context) => CreateReportScreen(),
-          // )).then((_) {
-          //   // Refresh issues list when returning from create screen
-          //   ref.read(issuesProvider.notifier).fetchIssues();
-          // });
+          // Navigate to report form screen
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => const ReportFormScreen(),
+            ),
+          ).then((_) {
+            // Refresh issues list when returning from report form screen
+            ref.read(issuesProvider.notifier).fetchIssues();
+          });
         },
         backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, color: Colors.white),

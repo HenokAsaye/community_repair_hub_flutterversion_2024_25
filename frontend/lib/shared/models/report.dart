@@ -26,7 +26,26 @@ class Issue {
 
   factory Issue.fromJson(Map<String, dynamic> json) {
     try {
-      print('Parsing issue: $json'); // Debug log
+      print('===== PARSING ISSUE FROM JSON =====');
+      print('Raw JSON: $json');
+      
+      // Extract and log the image URL specifically
+      String imageURL = json['imageURL'] ?? '';
+      print('Image URL from JSON: "$imageURL"');
+      print('Image URL type: ${imageURL.runtimeType}');
+      
+      // Process the image URL to ensure it's properly formatted
+      if (imageURL.isNotEmpty) {
+        // If it contains a filename but not the full path, ensure it's properly formatted
+        if (imageURL.endsWith('.jpg') || imageURL.endsWith('.jpeg') || imageURL.endsWith('.png')) {
+          if (!imageURL.contains('uploads/')) {
+            // Extract just the filename and ensure it's in the uploads directory
+            final filename = imageURL.split('/').last;
+            imageURL = 'uploads/$filename';
+            print('Reformatted image URL: "$imageURL"');
+          }
+        }
+      }
       
       // Handle locations - ensure it's properly parsed
       Location locationData;
@@ -43,17 +62,25 @@ class Issue {
         locationData = Location(city: 'Unknown', specificArea: 'Unknown');
       }
       
-      return Issue(
+      final issue = Issue(
         id: json['_id']?.toString(),
         category: json['category'] ?? 'Unknown',
         locations: locationData,
         description: json['description'] ?? 'No description',
         issueDate: json['issueDate'] != null ? DateTime.parse(json['issueDate']) : DateTime.now(),
         status: json['status'] ?? 'Unresolved',
-        imageURL: json['imageURL'] ?? '',
+        imageURL: imageURL, // Use the processed imageURL instead of raw json value
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
         updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
       );
+      
+      print('Parsed Issue:');
+      print('  ID: ${issue.id}');
+      print('  Category: ${issue.category}');
+      print('  Image URL: "${issue.imageURL}"');
+      print('================================');
+      
+      return issue;
     } catch (e) {
       print('Error parsing Issue from JSON: $e');
       print('JSON data: $json');

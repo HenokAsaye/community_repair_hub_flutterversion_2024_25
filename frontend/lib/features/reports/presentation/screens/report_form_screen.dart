@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../providers/report_form_provider.dart';
 
-class ReportFormScreen extends StatefulWidget {
+class ReportFormScreen extends ConsumerStatefulWidget {
   const ReportFormScreen({Key? key}) : super(key: key);
 
   @override
-  State<ReportFormScreen> createState() => _ReportFormScreenState();
+  ConsumerState<ReportFormScreen> createState() => _ReportFormScreenState();
 }
 
-class _ReportFormScreenState extends State<ReportFormScreen> {
+class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   File? _imageFile;
   final picker = ImagePicker();
   final _formKey = GlobalKey<FormState>();
@@ -39,11 +41,38 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   };
 
   Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+    try {
+      // Use gallery with higher quality and explicitly set image format
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+      
+      if (pickedFile != null) {
+        final file = File(pickedFile.path);
+        final fileExtension = pickedFile.path.split('.').last.toLowerCase();
+        
+        // Verify the file has a valid image extension
+        if (!['jpg', 'jpeg', 'png', 'gif'].contains(fileExtension)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a JPG, PNG or GIF image')),
+          );
+          return;
+        }
+        
+        print('Selected image: ${pickedFile.path}');
+        print('File extension: $fileExtension');
+        
+        setState(() {
+          _imageFile = file;
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting image: $e')),
+      );
     }
   }
 
@@ -62,14 +91,72 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
   }
 
   void _submitForm() async {
+    // Validate form
     if (!_formKey.currentState!.validate()) return;
+    
+    // Check if image is selected
+    if (_imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an image of the issue')),
+      );
+      return;
+    }
+    
+    // Parse date string to DateTime
+    final dateParts = _date.split('/');
+    if (dateParts.length != 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a valid date')),
+      );
+      return;
+    }
+    
+    final day = int.parse(dateParts[0]);
+    final month = int.parse(dateParts[1]);
+    final year = int.parse(dateParts[2]);
+    final issueDate = DateTime(year, month, day);
+    
+    // Show loading indicator
     setState(() { _isLoading = true; });
-    await Future.delayed(const Duration(seconds: 2)); // Simulate network
-    setState(() { _isLoading = false; });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Report submitted successfully!')),
-    );
-    Navigator.of(context).pop();
+    
+    try {
+      // Submit report using the provider
+      final success = await ref.read(reportFormProvider.notifier).submitReport(
+        category: _category,
+        city: _city,
+        specificAddress: _specificAddress,
+        description: _description,
+        issueDate: issueDate,
+        imageFile: _imageFile!,
+      );
+      
+      // Hide loading indicator
+      setState(() { _isLoading = false; });
+      
+      if (success) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report submitted successfully!')),
+        );
+        
+        // Return to previous screen
+        Navigator.of(context).pop();
+      } else {
+        // Show error message from provider state
+        final errorMessage = ref.read(reportFormProvider).errorMessage ?? 'Failed to submit report';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      }
+    } catch (e) {
+      // Hide loading indicator
+      setState(() { _isLoading = false; });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 
   @override

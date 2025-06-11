@@ -1,176 +1,139 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:community_repair_hub/config/routes/app_router.dart';
+import 'package:community_repair_hub/features/auth/presentation/providers/auth_provider.dart';
+import 'package:community_repair_hub/features/reports/presentation/screens/report_form_screen.dart';
+import 'package:community_repair_hub/core/network/api_service_provider.dart';
 
-class DashboardDrawer extends StatelessWidget {
-  final String? profileImage;
-  final bool isRepairTeam;
-  final String userName;
-  final String userEmail;
+class DashboardDrawer extends ConsumerWidget {
+  final String userRole;
 
-  const DashboardDrawer({
-    Key? key,
-    this.profileImage,
-    this.isRepairTeam = false,
-    this.userName = 'User Name',
-    this.userEmail = 'user@example.com',
-  }) : super(key: key);
+  const DashboardDrawer({Key? key, required this.userRole}) : super(key: key);
+
+  Widget _buildMenuItem(
+      BuildContext context, IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+      onTap: onTap,
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authNotifierProvider);
+    final homeRoute =
+        userRole == 'repair_team' ? AppRoutes.repairTeamDashboard : AppRoutes.home;
+
     return Drawer(
-      child: Column(
-        children: [
-          // Header with user info
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(top: 50, bottom: 20, left: 20, right: 20),
-            color: const Color(0xFF0EAF16), // Green color from the image
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile image
-                Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: profileImage != null
-                        ? ClipOval(
-                            child: Image.network(
-                              profileImage!,
-                              width: 90,
-                              height: 90,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          )
-                        : const Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Colors.grey,
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // User name
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // User email
-                Text(
-                  userEmail,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+      child: Container(
+        color: const Color(0xFF66BB6A), // A pleasant green color
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            _buildDrawerHeader(
+              context,
+              ref,
+              authState.user?.name ?? 'Anonymous',
+              authState.user?.email ?? 'no-email@provided.com',
+              authState.user?.profileImageUrl,
             ),
-          ),
-          // Menu items
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildMenuItem(
+            const SizedBox(height: 20),
+            _buildMenuItem(context, Icons.home, 'Home', () {
+              Navigator.pop(context);
+              context.go(homeRoute);
+            }),
+            if (userRole == 'citizen')
+              _buildMenuItem(context, Icons.report, 'Report a Problem', () {
+                Navigator.pop(context); // Close the drawer first
+                Navigator.push(
                   context,
-                  icon: Icons.home,
-                  title: 'Home',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushReplacementNamed(
-                      context,
-                      isRepairTeam ? '/repair_team_dashboard' : '/citizen_dashboard',
-                    );
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.report_problem,
-                  title: 'Report a Problem',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/report_problem');
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.history,
-                  title: 'Report History',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/report_history');
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.settings,
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/settings');
-                  },
-                ),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.help_outline,
-                  title: 'Help & Support',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/help');
-                  },
-                ),
-                const Divider(height: 1, thickness: 1),
-                _buildMenuItem(
-                  context,
-                  icon: Icons.logout,
-                  title: 'Logout',
-                  textColor: Colors.red,
-                  iconColor: Colors.red,
-                  onTap: () {
-                    // Handle logout
-                    Navigator.pop(context);
-                    // Add your logout logic here
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+                  MaterialPageRoute(
+                      builder: (context) => const ReportFormScreen()),
+                );
+              }),
+            const Divider(color: Colors.white54),
+            _buildMenuItem(context, Icons.logout, 'Logout', () async {
+              await ref.read(authNotifierProvider.notifier).logout();
+              if (context.mounted) {
+                context.go(AppRoutes.auth);
+              }
+            }),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    Color? iconColor,
-    Color? textColor,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: iconColor ?? Theme.of(context).primaryColor,
+  Widget _buildDrawerHeader(
+    BuildContext context,
+    WidgetRef ref,
+    String userName,
+    String userEmail,
+    String? profileImageUrl,
+  ) {
+    final apiService = ref.read(apiServiceProvider);
+    final fullImageUrl = profileImageUrl != null && profileImageUrl.isNotEmpty
+        ? (profileImageUrl.startsWith('http')
+            ? profileImageUrl
+            : apiService.baseUrl + profileImageUrl)
+        : null;
+
+    return Container(
+      padding: const EdgeInsets.only(top: 40, bottom: 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFF388E3C), // A darker green for the header
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: textColor ?? Colors.black87,
-          fontWeight: FontWeight.w500,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.white,
+            child: fullImageUrl == null
+                ? const Icon(Icons.person, size: 50, color: Color(0xFF388E3C))
+                : ClipOval(
+                    child: Image.network(
+                      fullImageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.person, size: 50, color: Color(0xFF388E3C));
+                      },
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            userName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            userEmail,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
     );
   }
 }

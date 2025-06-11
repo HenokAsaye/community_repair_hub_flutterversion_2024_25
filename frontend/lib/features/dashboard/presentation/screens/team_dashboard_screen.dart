@@ -1,5 +1,4 @@
 // Team Dashboard Screen 
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/dashboard_app_bar.dart';
@@ -7,6 +6,8 @@ import '../widgets/dashboard_drawer.dart';
 import '../widgets/dashboard_filter.dart';
 import '../widgets/team_report_card.dart';
 import '../providers/team_dashboard_provider.dart';
+import '../../../../../config/routes/app_router.dart'; // For AppRoutes
+import 'package:go_router/go_router.dart'; // For context.push
 
 class RepairTeamDashboard extends ConsumerStatefulWidget {
   const RepairTeamDashboard({super.key});
@@ -29,10 +30,23 @@ class _RepairTeamDashboardState extends ConsumerState<RepairTeamDashboard> {
 
   void _onViewReportDetails(String? reportId) {
     if (reportId == null) return;
-    // Navigate to report details screen
-    // Navigator.push(context, MaterialPageRoute(
-    //   builder: (context) => ReportDetailsScreen(reportId: reportId),
-    // ));
+    
+    // Find the issue with the matching ID
+    final issues = ref.read(teamIssuesProvider).issues;
+    final issue = issues.firstWhere(
+      (issue) => issue.id == reportId,
+      orElse: () => throw Exception('Issue not found'),
+    );
+    
+    // Navigate to the Repair Team Detail screen using GoRouter
+    if (issue.id == null) {
+      print("Error: Issue ID is null, cannot navigate to details.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Cannot view details for an issue with no ID.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    context.push(AppRoutes.repairTeamReportDetailsPath(issue.id!), extra: issue);
   }
 
   // Helper method to determine priority based on category
@@ -65,7 +79,7 @@ class _RepairTeamDashboardState extends ConsumerState<RepairTeamDashboard> {
           // ));
         },
       ),
-      drawer: const DashboardDrawer(),
+      drawer: const DashboardDrawer(userRole: 'repair_team'),
       body: Column(
         children: [
           // Search and Filter Bar
@@ -251,9 +265,7 @@ class _RepairTeamDashboardState extends ConsumerState<RepairTeamDashboard> {
                     location: '${issue.locations.city}, ${issue.locations.specificArea}',
                     status: issue.status.toLowerCase(),
                     date: issue.createdAt,
-                    imageUrl: issue.imageURL.startsWith('http') 
-                        ? issue.imageURL 
-                        : 'http://localhost:5500${issue.imageURL}', // Using port 5500 for backend
+                    imageUrl: issue.imageURL, // The TeamReportCard will handle the URL formatting
                     priority: getPriorityFromCategory(issue.category), // Determine priority from category
                     onViewPressed: () => _onViewReportDetails(issue.id),
                     onStatusChanged: (newStatus) {

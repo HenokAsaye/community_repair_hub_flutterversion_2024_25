@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:community_repair_hub/core/network/api_service_provider.dart';
 
-class CitizenReportCard extends StatelessWidget {
+class CitizenReportCard extends ConsumerWidget {
   final String? imageUrl;
   final String title;
   final String location;
@@ -22,7 +24,13 @@ class CitizenReportCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final apiService = ref.read(apiServiceProvider);
+    final String? fullImageUrl = imageUrl != null && imageUrl!.isNotEmpty
+        ? (imageUrl!.startsWith('http')
+            ? imageUrl
+            : apiService.baseUrl + imageUrl!)
+        : null;
     print('Building CitizenReportCard: $title');
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -84,16 +92,30 @@ class CitizenReportCard extends StatelessWidget {
                 bottomRight: Radius.circular(12),
               ),
             ),
-            child: imageUrl != null
+            child: fullImageUrl != null
                 ? ClipRRect(
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(12),
                       bottomRight: Radius.circular(12),
                     ),
                     child: Image.network(
-                      imageUrl!,
+                      fullImageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('Error loading image: $fullImageUrl');
+                        print('Error details: $error');
+                        return _buildImagePlaceholder();
+                      },
                     ),
                   )
                 : _buildImagePlaceholder(),

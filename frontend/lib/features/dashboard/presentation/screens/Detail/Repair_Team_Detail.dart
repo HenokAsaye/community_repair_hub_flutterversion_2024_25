@@ -1,352 +1,246 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../../config/routes/app_router.dart';
+import '../../../../../shared/models/report.dart'; // Corrected Issue model import
+import '../../providers/citizen_dashboard_provider.dart';
+import '../../../../../core/network/api_service_provider.dart';
 
-class RepairTeamDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> report;
+class RepairTeamDetailScreen extends ConsumerStatefulWidget {
+  final Issue issue;
 
-  const RepairTeamDetailScreen({
-    Key? key,
-    required this.report,
-  }) : super(key: key);
+  const RepairTeamDetailScreen({super.key, required this.issue});
+
+  @override
+  ConsumerState<RepairTeamDetailScreen> createState() => _RepairTeamDetailScreenState();
+}
+
+class _RepairTeamDetailScreenState extends ConsumerState<RepairTeamDetailScreen> {
+  late Issue _displayedIssue;
+  bool _issueWasUpdated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayedIssue = widget.issue;
+  }
+
+  Future<void> _refreshIssueDetails() async {
+    try {
+      final apiClient = ref.read(citizenApiClientProvider);
+      final freshIssue = await apiClient.getIssueById(widget.issue.id!); // Assuming id is non-null for an existing issue
+      if (mounted) {
+        setState(() {
+          _displayedIssue = freshIssue;
+        });
+      }
+    } catch (e) {
+      print("Error refreshing issue details: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not refresh issue details: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  String _buildSimpleImageUrl(String imageUrl) {
+    final baseUrl = ref.read(apiServiceProvider).baseUrl;
+    
+    // Handle empty URL
+    if (imageUrl.isEmpty) return '';
+    
+    // If already a full URL, return as is
+    if (imageUrl.startsWith('http')) return imageUrl;
+    
+    // Get just the filename
+    final filename = imageUrl.split('/').last;
+    
+    // Construct direct URL to the image
+    final fullUrl = '$baseUrl/uploads/$filename';
+    
+    print('Image URL: $fullUrl');
+    return fullUrl;
+  }
+
+
+  Widget _buildImagePlaceholder() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+          SizedBox(height: 8),
+          Text('No Image Available', style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Report Details'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Report Image
-            Container(
-              height: 250,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                image: report['imageUrl'] != null
-                    ? DecorationImage(
-                        image: NetworkImage(report['imageUrl']),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: report['imageUrl'] == null
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.photo_camera_outlined, size: 48, color: Colors.grey),
-                          SizedBox(height: 8),
-                          Text('No Image Available', style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    )
-                  : null,
-            ),
-            
-            // Report Status and Date
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  _buildStatusChip(report['status']),
-                  const Spacer(),
-                  Text(
-                    DateFormat('MMM d, y').format(report['date'] ?? DateTime.now()),
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Report Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                report['title'] ?? 'Untitled Report',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            
-            // Report Location
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 20, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    report['location'] ?? 'Location not specified',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Divider
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Divider(height: 1, thickness: 1),
-            ),
-            
-            // Report Description
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Text(
-                'Description',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-              child: Text(
-                report['description'] ?? 'No description provided.',
-                style: const TextStyle(fontSize: 16, height: 1.5),
-              ),
-            ),
-            
-            // Status Updates Section
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-              child: Text(
-                'Status Updates',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            
-            // Status Update Items
-            _buildStatusUpdateItem(
-              status: 'Reported',
-              date: 'May 10, 2023',
-              description: 'Issue has been reported and is under review.',
-              isFirst: true,
-              isLast: false,
-              isCompleted: true,
-            ),
-            _buildStatusUpdateItem(
-              status: 'In Progress',
-              date: 'May 12, 2023',
-              description: 'A technician has been assigned to investigate the issue.',
-              isFirst: false,
-              isLast: false,
-              isCompleted: true,
-            ),
-            _buildStatusUpdateItem(
-              status: 'Completed',
-              date: 'May 15, 2023',
-              description: 'The pothole has been filled and the issue is now resolved.',
-              isFirst: false,
-              isLast: true,
-              isCompleted: true,
-            ),
-            
-            const SizedBox(height: 20),
-          ],
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context, _issueWasUpdated),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            // Chat Button
-            Expanded(
-              flex: 1,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  // Handle chat
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(color: Theme.of(context).primaryColor),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Issue Image
+                  Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _displayedIssue.imageURL.isNotEmpty
+                          ? Image.network(
+                              _buildSimpleImageUrl(_displayedIssue.imageURL),
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(child: CircularProgressIndicator());
+                              },
+                              errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                            )
+                          : _buildImagePlaceholder(),
+                    ),
                   ),
-                ),
-                icon: Icon(
-                  Icons.chat_bubble_outline,
-                  color: Theme.of(context).primaryColor,
-                  size: 20,
-                ),
-                label: Text(
-                  'Chat',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+
+                  // Issue Title
+                  Text(
+                    _displayedIssue.category, // Using category as title
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                ),
+                  const SizedBox(height: 8),
+
+                  // Status and Priority
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _displayedIssue.status.toUpperCase(),
+                      style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Location
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "${_displayedIssue.locations.city}, ${_displayedIssue.locations.specificArea}", // Combining city and specific area
+                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Description
+                  const Text(
+                    'Description',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(_displayedIssue.description, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 24),
+
+                  // Extra padding at bottom for the floating button
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
-            // Mark as Resolved Button
-            Expanded(
-              flex: 2,
+          ),
+
+          // Take Issue Button
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: ElevatedButton(
-                onPressed: () {
-                  // Handle mark as resolved
+                onPressed: () async {
+                  // Convert the team Issue to a Map for the update status screen
+                  final issueMap = <String, dynamic>{
+                    '_id': _displayedIssue.id, 
+                    'id': _displayedIssue.id,  
+                    'title': _displayedIssue.category, // Using category as title for the map
+                    'description': _displayedIssue.description,
+                    'location': "${_displayedIssue.locations.city}, ${_displayedIssue.locations.specificArea}", // Passing combined location string
+                    'status': _displayedIssue.status,
+                    // 'priority': _displayedIssue.priority, // Priority field doesn't exist in new model
+                    'imageUrl': _displayedIssue.imageURL,
+                  };
+                  
+                  print('Navigating to update status with issue: $issueMap');
+                  
+                  try {
+                    final result = await context.push(AppRoutes.updateStatus, extra: issueMap);
+                    if (result == true && mounted) {
+                      setState(() {
+                        _issueWasUpdated = true;
+                      });
+                      await _refreshIssueDetails(); // Refresh the details on this screen
+                    }
+                  } catch (e) {
+                    print('Navigation error or error during update process: $e');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error navigating or updating: ${e.toString()}'), backgroundColor: Colors.red),
+                      );
+                    }
+                    // Fallback navigation if go_router fails or other error during push
+                    // Consider if this fallback is still needed or if the error should be handled differently
+                    /* Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => UpdateStatusScreen(issue: issueMap),
+                      ),
+                    ); */
+                  }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text(
-                  'Mark as Resolved',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  'Take Issue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildStatusChip(String status) {
-    Color statusColor;
-    switch (status.toLowerCase()) {
-      case 'pending':
-        statusColor = Colors.orange;
-        break;
-      case 'in progress':
-        statusColor = Colors.blue;
-        break;
-      case 'completed':
-        statusColor = Colors.green;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            status.toUpperCase(),
-            style: TextStyle(
-              color: statusColor,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildStatusUpdateItem({
-    required String status,
-    required String date,
-    required String description,
-    required bool isFirst,
-    required bool isLast,
-    required bool isCompleted,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 24.0, right: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline
-          Column(
-            children: [
-              // Top line (only if not first)
-              if (!isFirst)
-                Container(
-                  width: 2,
-                  height: 16,
-                  color: isCompleted ? Colors.green : Colors.grey[300],
-                ),
-              // Dot
-              Container(
-                width: 14,
-                height: 14,
-                margin: const EdgeInsets.symmetric(vertical: 2),
-                decoration: BoxDecoration(
-                  color: isCompleted ? Colors.green : Colors.grey[300],
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2,
-                  ),
-                ),
-              ),
-              // Bottom line (only if not last)
-              if (!isLast)
-                Container(
-                  width: 2,
-                  height: 60, // Adjust based on content
-                  color: isCompleted ? Colors.green : Colors.grey[300],
-                ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    status,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isCompleted ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    date,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: isCompleted ? Colors.black87 : Colors.grey,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
