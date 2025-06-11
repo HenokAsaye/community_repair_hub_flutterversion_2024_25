@@ -5,12 +5,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 class ApiService {
   final Dio _dio;
   final String baseUrl;
-  final List<String> fallbackUrls = [
-    'http://192.168.1.3:5500',   // Current IP address
-        'http://192.168.1.3:5500',      // Android emulator special IP that points to host machine
-        'http://192.168.1.3:5500',     // For local testing
-    'http://192.168.1.3:5500'      // For local testing
-  ];
+  final List<String> fallbackUrls = [];
   late String _currentActiveUrl;
 
   ApiService({required this.baseUrl}) : 

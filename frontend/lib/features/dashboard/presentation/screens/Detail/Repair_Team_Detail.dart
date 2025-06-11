@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../config/routes/app_router.dart';
 import '../../../../../shared/models/report.dart'; // Corrected Issue model import
-import '../../providers/citizen_dashboard_provider.dart';
+
 import '../../../../../core/network/api_service_provider.dart';
 
 class RepairTeamDetailScreen extends ConsumerStatefulWidget {
@@ -27,8 +27,9 @@ class _RepairTeamDetailScreenState extends ConsumerState<RepairTeamDetailScreen>
 
   Future<void> _refreshIssueDetails() async {
     try {
-      final apiClient = ref.read(citizenApiClientProvider);
-      final freshIssue = await apiClient.getIssueById(widget.issue.id!); // Assuming id is non-null for an existing issue
+      final apiService = ref.read(apiServiceProvider);
+      final response = await apiService.get('/citizens/issues/${widget.issue.id!}');
+      final freshIssue = Issue.fromJson(response.data['data']);
       if (mounted) {
         setState(() {
           _displayedIssue = freshIssue;

@@ -1,9 +1,12 @@
 import express from 'express';
-import { updateIssueStatus, TakeIssue, searchByCategory, searchByLocation } from '../controllers/repairTeamController.js';
+import { getIssues, updateIssueStatus, TakeIssue, searchByCategory, searchByLocation } from '../controllers/repairTeamController.js';
 // Add any other necessary authentication or middleware imports here
 // import { verifyTeamMember } from '../middleware/authMiddleware.js'; // Example
 
 const router = express.Router();
+
+// Route to get all issues for the team dashboard
+router.get('/issues', /* verifyTeamMember, */ getIssues);
 
 // Route to update issue status
 // Assuming :id is the issueId

@@ -28,7 +28,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Community Repair Hub',
       debugShowCheckedModeBanner: false,
-      title: 'Community Repair Hub',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1B5E20), // Dark green

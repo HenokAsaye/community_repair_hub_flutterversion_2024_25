@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import '../domain/entities/report.dart';
 import '../domain/entities/assigned_report.dart';
-import 'package:community_repair_hub/core/network/api_service_new.dart';
+import 'package:community_repair_hub/core/network/api_service.dart';
 
 class ReportsApiService {
   final ApiService api;

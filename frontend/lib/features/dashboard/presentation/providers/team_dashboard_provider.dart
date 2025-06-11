@@ -1,13 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/report.dart';
-import '../../data/team_api_client.dart';
+import '../../../../core/network/api_service.dart';
 import '../../../../core/network/api_service_provider.dart';
-
-// Team API Client provider
-final teamApiClientProvider = Provider<TeamApiClient>((ref) {
-  final apiService = ref.watch(apiServiceProvider);
-  return TeamApiClient(apiService);
-});
 
 // Team Issues state
 enum TeamIssuesStateStatus { initial, loading, success, error }
@@ -83,15 +77,17 @@ class TeamIssuesState {
 
 // Team Issues notifier provider
 class TeamIssuesNotifier extends StateNotifier<TeamIssuesState> {
-  final TeamApiClient _apiClient;
+  final ApiService _apiService;
 
-  TeamIssuesNotifier(this._apiClient) : super(TeamIssuesState());
+  TeamIssuesNotifier(this._apiService) : super(TeamIssuesState());
 
   Future<void> fetchIssues() async {
     state = state.copyWith(status: TeamIssuesStateStatus.loading);
     
     try {
-      final issues = await _apiClient.getIssues();
+      final response = await _apiService.get('/team/issues');
+      final List<dynamic> issuesJson = response.data['data'];
+      final issues = issuesJson.map((json) => Issue.fromJson(json)).toList();
       
       state = state.copyWith(
         status: TeamIssuesStateStatus.success,
@@ -128,7 +124,10 @@ class TeamIssuesNotifier extends StateNotifier<TeamIssuesState> {
 
   Future<void> updateIssueStatus(String issueId, String newStatus) async {
     try {
-      await _apiClient.updateIssueStatus(issueId, newStatus);
+      await _apiService.put(
+        '/team/issues/$issueId/status',
+        data: {'status': newStatus},
+      );
       // Refresh the issues list after updating
       await fetchIssues();
     } catch (e) {
@@ -138,31 +137,13 @@ class TeamIssuesNotifier extends StateNotifier<TeamIssuesState> {
     }
   }
 
-  Future<void> filterByStatus(String status) async {
-    state = state.copyWith(status: TeamIssuesStateStatus.loading);
-    
-    try {
-      final issues = await _apiClient.filterByStatus(status);
-      
-      state = state.copyWith(
-        status: TeamIssuesStateStatus.success,
-        issues: issues,
-        errorMessage: null,
-        statusFilter: status,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        status: TeamIssuesStateStatus.error,
-        errorMessage: e.toString(),
-      );
-    }
-  }
+  
 }
 
 // Team Issues provider
 final teamIssuesProvider = StateNotifierProvider<TeamIssuesNotifier, TeamIssuesState>((ref) {
-  final apiClient = ref.watch(teamApiClientProvider);
-  return TeamIssuesNotifier(apiClient);
+  final apiService = ref.watch(apiServiceProvider);
+  return TeamIssuesNotifier(apiService);
 });
 
 // Filtered team issues provider

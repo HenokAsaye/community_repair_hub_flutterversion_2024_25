@@ -1,5 +1,23 @@
 import Issues from "../models/Issue.js";
 import User from "../models/User.js";
+
+export const getIssues = async (req, res) => {
+    try {
+        const issues = await Issues.find().sort({ createdAt: -1 });
+        return res.status(200).json({
+            success: true,
+            message: "All issues retrieved successfully for team",
+            data: issues
+        });
+    } catch (error) {
+        console.error('Error in getIssues (repairTeamController):', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to retrieve issues for team",
+            error: error.message
+        });
+    }
+};
 import mongoose from "mongoose"; // Import mongoose for ObjectId validation
 export const TakeIssue = async (req, res) => {
     try {

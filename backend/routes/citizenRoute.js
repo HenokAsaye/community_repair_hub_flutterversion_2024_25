@@ -4,7 +4,7 @@ import {upload,handleMulterError} from '../config/multerConfig.js';
 
 const router = express.Router();
 
-router.get('/issues', getIssues);
+router.get('/', getIssues);
 router.post('/report', upload.single('image'), (req, res, next) => {
     console.log('File:', req.file);
     console.log('Body:', req.body);

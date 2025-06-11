@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../features/dashboard/presentation/providers/citizen_dashboard_provider.dart';
+
 import '../../../../core/network/api_service_provider.dart';
 
 class UpdateStatusScreen extends ConsumerStatefulWidget {
@@ -63,28 +63,31 @@ class _UpdateStatusScreenState extends ConsumerState<UpdateStatusScreen> {
         throw Exception('Issue ID is empty or invalid. Cannot update status.');
       }
 
-      final apiClient = ref.read(citizenApiClientProvider);
+      final apiService = ref.read(apiServiceProvider);
 
       print('Attempting to update issue status for ID: $_issueId with status: $_selectedStatus and notes: $_additionalNotes');
 
-      // Call the new method in CitizenApiClient
-      final updatedIssue = await apiClient.updateIssueStatus(
-        issueId: _issueId,
-        status: _selectedStatus,
-        notes: _additionalNotes,
+      // Call the API endpoint directly
+      final response = await apiService.put(
+        '/team/issues/$_issueId/status',
+        data: {
+          'status': _selectedStatus,
+          'notes': _additionalNotes,
+        },
       );
 
-      print('Successfully updated issue: ${updatedIssue.id}');
+      final updatedIssueData = response.data['data'] as Map<String, dynamic>;
+      print('Successfully updated issue: ${updatedIssueData['_id']}');
 
       setState(() {
         _isSuccess = true;
         _isLoading = false;
-        _currentStatus = updatedIssue.status; // Update current status locally if needed
+        _currentStatus = updatedIssueData['status']; // Update current status locally
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Status updated to ${_selectedStatus} successfully!'),
+          content: Text('Status updated to $_selectedStatus successfully!'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
         ),
