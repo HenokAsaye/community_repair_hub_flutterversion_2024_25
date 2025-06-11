@@ -28,7 +28,7 @@ class ApiService {
       ),
     );
     
-    // Add an interceptor to log all errors in detail
+   
     _dio.interceptors.add(InterceptorsWrapper(
       onError: (DioException e, handler) {
         debugPrint('=== DIO ERROR DETAILS ===');
