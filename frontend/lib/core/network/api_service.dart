@@ -116,6 +116,7 @@ class ApiService {
       }
     }
 
+
     // If loop finishes, all URLs failed
     if (lastError == null) {
       // This case should ideally not be reached if baseUrls is not empty
@@ -235,6 +236,7 @@ class ApiService {
         queryParameters: queryParameters,
         options: options,
         cancelToken: cancelToken,
+
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
       );
@@ -284,6 +286,7 @@ class ApiService {
           return response;
         } catch (e) {
           if (e is DioException) {
+            lastError = e;
             debugPrint('Fallback URL $fallbackUrl failed for POST FormData: ${e.message}');
           } else {
             debugPrint('Fallback URL $fallbackUrl error for POST FormData: $e');
@@ -298,6 +301,7 @@ class ApiService {
       debugPrint('All URLs failed for POST FormData. Last error: ${lastError.message}');
       throw lastError;
     } else {
+      // This case should ideally not be reached, but as a fallback:
       throw DioException(
         requestOptions: RequestOptions(path: path),
         error: 'All connection attempts failed for POST FormData',
@@ -354,6 +358,7 @@ class ApiService {
             validateStatus: (status) => status != null && status < 500,
           ));
 
+
           final response = await fallbackDio.put(
             path,
             data: data,
@@ -371,7 +376,8 @@ class ApiService {
           return response;
         } catch (e) {
           if (e is DioException) {
-            debugPrint('Fallback URL $fallbackUrl failed for PUT: ${e.message}');
+            debugPrint(
+                'Fallback URL $fallbackUrl failed for PUT: ${e.message}');
           } else {
             debugPrint('Fallback URL $fallbackUrl error for PUT: $e');
           }
@@ -379,15 +385,8 @@ class ApiService {
       }
     }
 
-    if (lastError != null) {
-      debugPrint('All URLs failed for PUT. Last error: ${lastError.message}');
-      throw lastError;
-    } else {
-      throw DioException(
-        requestOptions: RequestOptions(path: path),
-        error: 'All connection attempts failed for PUT',
-      );
-    }
+    debugPrint('All URLs failed for PUT. Last error: ${lastError.message}');
+    throw lastError;
   }
 
   Future<Response> patch(
@@ -456,7 +455,8 @@ class ApiService {
           return response;
         } catch (e) {
           if (e is DioException) {
-            debugPrint('Fallback URL $fallbackUrl failed for PATCH: ${e.message}');
+            debugPrint(
+                'Fallback URL $fallbackUrl failed for PATCH: ${e.message}');
           } else {
             debugPrint('Fallback URL $fallbackUrl error for PATCH: $e');
           }
@@ -464,14 +464,7 @@ class ApiService {
       }
     }
 
-    if (lastError != null) {
-      debugPrint('All URLs failed for PATCH. Last error: ${lastError.message}');
-      throw lastError;
-    } else {
-      throw DioException(
-        requestOptions: RequestOptions(path: path),
-        error: 'All connection attempts failed for PATCH',
-      );
-    }
+    debugPrint('All URLs failed for PATCH. Last error: ${lastError.message}');
+    throw lastError;
   }
 }
