@@ -48,7 +48,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     final reportData = {
       'imageUrl': issue.imageURL.startsWith('http') 
           ? issue.imageURL 
-          : 'http://192.168.1.3:5500${issue.imageURL}',
+          : 'http://192.168.100.10:5500${issue.imageURL}',
       'title': issue.category,
       'location': '${issue.locations.city}, ${issue.locations.specificArea}',
       'status': issue.status.toLowerCase(),
