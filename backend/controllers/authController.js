@@ -8,14 +8,20 @@ import crypto from "crypto";
 export const signup = async (req, res) => {
     try {
         const { name, email, password, role, region, city } = req.body;
-        const validRoles = ["Citizen", "RepairTeam"];
         
         if (!name || !email || !password || !role ) {
             return res.status(StatusCodes.BAD_REQUEST).json({ message: "All fields are required" });
         }
         
-        if (!validRoles.includes(role)) {
-            return res.status(StatusCodes.BAD_REQUEST).json({ message: "Invalid role. Must be 'Citizen' or 'Repair team'." });
+        let normalizedRole;
+        const roleLower = role.toLowerCase();
+
+        if (roleLower === 'citizen') {
+            normalizedRole = 'Citizen';
+        } else if (roleLower === 'repairteam') {
+            normalizedRole = 'RepairTeam';
+        } else {
+            return res.status(StatusCodes.BAD_REQUEST).json({ message: "Invalid role. Must be 'Citizen' or 'RepairTeam'." });
         }
 
         const existingUser = await User.findOne({ email });
@@ -31,7 +37,7 @@ export const signup = async (req, res) => {
             email,
             password: hashedPassword,
             imageUrl: req.file ? `/uploads/${req.file.filename}` : null, 
-            role,
+            role: normalizedRole,
             region,
             city
         });
@@ -142,7 +148,7 @@ export const forgotPassword = async (req, res) => {
   user.resetTokenExpiresAt = tokenExpiresAt;
   await user.save();
 
-  const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `http://192.168.1.3:3000/reset-password/${resetToken}`;
   sendResetEmail(email, resetLink);
 
   return res.status(StatusCodes.OK).json({ message: "Reset link has been sent to your email" });

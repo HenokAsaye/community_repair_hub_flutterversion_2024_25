@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/report.dart';
 import '../../data/team_api_client.dart';
-import './citizen_dashboard_provider.dart';
+import '../../../../core/network/api_service_provider.dart';
 
 // Team API Client provider
 final teamApiClientProvider = Provider<TeamApiClient>((ref) {

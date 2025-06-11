@@ -117,6 +117,10 @@ class CitizenApiClient {
     required MultipartFile imageFile,
   }) async {
     try {
+      print('Preparing form data for report submission');
+      print('Image file name: ${imageFile.filename}');
+      print('Image content type: ${imageFile.contentType}');
+      
       final formData = FormData.fromMap({
         'category': category,
         'city': city,
@@ -125,18 +129,30 @@ class CitizenApiClient {
         'issueDate': issueDate.toIso8601String(),
         'image': imageFile,
       });
+      
+      print('FormData created successfully');
+      print('Sending request to /citizens/report');
 
       final response = await _apiService.postFormData('/citizens/report', formData: formData);
+      
+      print('Response received: ${response.statusCode}');
+      print('Response data: ${response.data}');
       
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true && data['data'] != null) {
+          print('Successfully created issue with ID: ${data['data']['_id'] ?? 'unknown'}');
           return Issue.fromJson(data['data']);
+        } else {
+          print('API returned success=false or null data');
+          throw Exception('API returned invalid response format: ${response.data}');
         }
       }
       
-      throw Exception('Failed to report issue: ${response.statusCode}');
+      print('Non-200 status code: ${response.statusCode}');
+      throw Exception('Failed to report issue: ${response.statusCode} - ${response.data}');
     } catch (e) {
+      print('Exception in reportIssue: $e');
       throw Exception('Failed to report issue: $e');
     }
   }
@@ -144,20 +160,96 @@ class CitizenApiClient {
   // Get a single issue by ID
   Future<Issue> getIssueById(String id) async {
     try {
+      print('===== FRONTEND: FETCHING ISSUE BY ID =====');
       print('Fetching issue with ID: $id');
+      print('API base URL: ${_apiService.baseUrl}');
+      print('Endpoint: /citizens/issues/$id');
+      
       final response = await _apiService.get('/citizens/issues/$id');
+      
+      print('Response status code: ${response.statusCode}');
+      print('Response data: ${response.data}');
       
       if (response.statusCode == 200) {
         final data = response.data;
+        print('Success: ${data['success']}');
+        print('Message: ${data['message']}');
+        
         if (data['success'] == true && data['data'] != null) {
-          return Issue.fromJson(data['data']);
+          print('Data: ${data['data']}');
+          final issue = Issue.fromJson(data['data']);
+          print('Parsed issue:');
+          print('  ID: ${issue.id}');
+          print('  Category: ${issue.category}');
+          print('  Image URL: ${issue.imageURL}');
+          return issue;
+        } else {
+          print('Data is null or success is false');
+          throw Exception('Invalid response format: ${response.data}');
         }
       }
       
+      print('Non-200 status code: ${response.statusCode}');
       throw Exception('Failed to load issue details: ${response.statusCode}');
     } catch (e) {
       print('Exception in getIssueById: $e');
       throw Exception('Failed to load issue details: $e');
+    }
+  }
+
+  // Update issue status by ID (for repair team)
+  Future<Issue> updateIssueStatus({
+    required String issueId,
+    required String status,
+    required String notes,
+  }) async {
+    try {
+      print('===== FRONTEND: UPDATING ISSUE STATUS =====');
+      print('Updating issue with ID: $issueId');
+      print('New status: $status, Notes: $notes');
+      print('API base URL: ${_apiService.baseUrl}');
+      print('Endpoint: /team/issues/$issueId/status');
+
+      final response = await _apiService.put(
+        '/team/issues/$issueId/status', // Corrected endpoint for team status updates
+        data: {
+          'status': status,
+          'notes': notes,
+          'timestamp': DateTime.now().toIso8601String(), // Adding a timestamp for the update
+        },
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data != null && data['success'] == true && data['data'] != null) {
+          print('Successfully updated issue: ${data['data']}');
+          return Issue.fromJson(data['data']);
+        } else {
+          print('API returned success=false or null data for update: $data');
+          throw Exception('Failed to update issue status: API returned invalid response format.');
+        }
+      }
+      
+      print('Non-200 status code for update: ${response.statusCode}');
+      throw Exception('Failed to update issue status: ${response.statusCode} - ${response.data}');
+    } catch (e) {
+      print('Exception in updateIssueStatus: $e');
+      // Try to provide more specific error messages based on DioException
+      if (e is DioException && e.response != null) {
+        print('DioException response data: ${e.response?.data}');
+        final errorData = e.response?.data;
+        String errorMessage = 'Failed to update issue status.';
+        if (errorData is Map && errorData.containsKey('message')) {
+          errorMessage += ' Server: ${errorData['message']}';
+        } else if (errorData != null) {
+          errorMessage += ' Server response: $errorData';
+        }
+        throw Exception(errorMessage);
+      }
+      throw Exception('Failed to update issue status: $e');
     }
   }
 }

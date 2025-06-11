@@ -1,37 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/models/report.dart';
 import '../../data/citizen_api_client.dart';
 import '../../data/mock_data.dart';
-
-// API Service provider
-final apiServiceProvider = Provider<ApiService>((ref) {
-  // Use localhost since it was working before
-  const serverPort = '5500';
-  
-  // Determine the correct base URL based on the platform
-  String baseUrl;
-  
-  // Check if we're running on web
-  if (kIsWeb) {
-    // For web, use the current origin
-    baseUrl = 'http://localhost:$serverPort';
-  } else {
-    // For physical devices, use your computer's actual IP address
-    // This is your Wi-Fi IP address from ipconfig
-    baseUrl = 'http://192.168.209.57:$serverPort';
-    
-    // For Android emulator, you can use 10.0.2.2 which is a special alias
-    // baseUrl = 'http://10.0.2.2:$serverPort';
-  }
-  
-  // For debugging purposes only
-  print('Using API base URL: $baseUrl');
-  
-  // Return the API service with the appropriate URL
-  return ApiService(baseUrl: baseUrl);
-});
+import '../../../../core/network/api_service_provider.dart';
 
 // Citizen API Client provider
 final citizenApiClientProvider = Provider<CitizenApiClient>((ref) {

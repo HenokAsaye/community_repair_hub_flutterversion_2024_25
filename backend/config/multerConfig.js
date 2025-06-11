@@ -28,17 +28,32 @@ const storage = multer.diskStorage({
 
 // File filter function
 const fileFilter = (req, file, cb) => {
-    // Accept images only
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-        return cb(new Error('Only image files are allowed!'), false);
+    // Define allowed file extensions
+    const allowedExtensions = ['.jpeg', '.jpg', '.png', '.gif'];
+    // Define allowed MIME types
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+    // Check file extension
+    const extname = path.extname(file.originalname).toLowerCase();
+    const isExtensionAllowed = allowedExtensions.includes(extname);
+
+    // Check MIME type
+    const isMimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
+
+    if (isMimeTypeAllowed && isExtensionAllowed) {
+        cb(null, true); // Accept the file
+    } else {
+        let errorMessage = 'File type not allowed.';
+        if (!isMimeTypeAllowed) {
+            errorMessage += ` Mimetype ${file.mimetype} is not accepted. Expected one of: ${allowedMimeTypes.join(', ')}.`;
+        }
+        if (!isExtensionAllowed) {
+            errorMessage += ` Extension ${extname} is not accepted. Expected one of: ${allowedExtensions.join(', ')}.`;
+        }
+        // Log the details on the server for easier debugging
+        console.warn(`File rejected: originalname='${file.originalname}', mimetype='${file.mimetype}', ext='${extname}'. Reason: ${errorMessage}`);
+        cb(new Error(errorMessage), false); // Reject the file
     }
-    
-    // Check mime type
-    if (!file.mimetype.startsWith('image/')) {
-        return cb(new Error('Only image files are allowed!'), false);
-    }
-    
-    cb(null, true);
 };
 
 // Error handling middleware

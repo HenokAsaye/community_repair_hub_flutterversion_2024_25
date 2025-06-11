@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'config/routes/app_router.dart'; // Use GoRouter
+import 'features/auth/presentation/providers/auth_provider.dart'; // Import for sharedPreferencesProvider
 
-import 'features/auth/presentation/screens/login_screen.dart' as login_screen;
-import 'features/auth/presentation/screens/register_screen.dart'
-    as register_screen;
-import 'features/auth/presentation/screens/splash_screen.dart' as splash_screen;
-import 'features/dashboard/presentation/screens/citizen_dashboard_screen.dart';
+// import 'features/dashboard/presentation/screens/team_dashboard_screen.dart'; // No longer needed here if using router
+// import 'features/dashboard/presentation/screens/Detail/Repair_Team_Detail.dart';
 
-void main() {
-  runApp(const ProviderScope(child: MyApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter bindings are initialized
+  final prefs = await SharedPreferences.getInstance(); // Initialize SharedPreferences
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs), // Override the provider
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
+      title: 'Community Repair Hub',
       debugShowCheckedModeBanner: false,
       title: 'Community Repair Hub',
       theme: ThemeData(
@@ -34,12 +44,8 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const splash_screen.SplashScreen(),
-      routes: {
-        '/login': (_) => const login_screen.LoginScreen(),
-        '/register': (_) => const register_screen.RegisterScreen(),
-        '/home': (_) => const CitizenDashboard(),
-      },
+      routerConfig: appRouter, // Use the GoRouter configuration
+
     );
   }
 }

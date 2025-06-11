@@ -6,8 +6,10 @@ class ApiService {
   final Dio _dio;
   final String baseUrl;
   final List<String> fallbackUrls = [
-    'http://127.0.0.1:5500',
-    'http://localhost:3000'
+    'http://192.168.1.3:5500',   // Current IP address
+        'http://192.168.1.3:5500',      // Android emulator special IP that points to host machine
+        'http://192.168.1.3:5500',     // For local testing
+    'http://192.168.1.3:5500'      // For local testing
   ];
   late String _currentActiveUrl;
 
@@ -108,25 +110,31 @@ class ApiService {
           return response;
         } catch (e) {
           if (e is DioException) {
+            lastError = e; // Update lastError with the latest DioException
             debugPrint('Fallback URL $fallbackUrl failed: ${e.message}');
           } else {
             debugPrint('Fallback URL $fallbackUrl error: $e');
+            // Consider rethrowing or wrapping non-DioExceptions if specific handling is needed
           }
           // Continue to the next fallback URL
         }
       }
     }
-    
-    // If all URLs fail, throw the last error
-    if (lastError != null) {
-      debugPrint('All URLs failed. Last error: ${lastError.message}');
-      throw lastError;
-    } else {
-      throw DioException(
-        requestOptions: RequestOptions(path: path),
-        error: 'All connection attempts failed',
+
+    // If loop finishes, all URLs failed
+    if (lastError == null) {
+      // This case should ideally not be reached if baseUrls is not empty
+      // and the loop runs at least once.
+      // However, to be safe and satisfy the analyzer if baseUrls could be empty:
+      lastError = DioException(
+        requestOptions: RequestOptions(path: path), // Corrected 'endpoint' to 'path'
+        message: 'No base URLs available or loop did not execute and lastError remained null.',
       );
     }
+        
+    // Now, lastError is guaranteed to be non-null by the block above.
+    debugPrint('All URLs failed for GET. Last error: ${lastError.message}'); // Removed '!'
+    throw lastError; // Removed '!'
   }
 
   Future<Response> post(
@@ -207,15 +215,10 @@ class ApiService {
     }
     
     // If all URLs fail, throw the last error
-    if (lastError != null) {
+    // The analyzer indicates lastError cannot be null here, so the if condition is removed.
       debugPrint('All URLs failed for POST. Last error: ${lastError.message}');
       throw lastError;
-    } else {
-      throw DioException(
-        requestOptions: RequestOptions(path: path),
-        error: 'All connection attempts failed for POST',
-      );
-    }
+    // } else { ... } block removed as the condition for 'if (lastError != null)' was deemed always true by the analyzer.
   }
   
   Future<Response> postFormData(
@@ -303,6 +306,176 @@ class ApiService {
       throw DioException(
         requestOptions: RequestOptions(path: path),
         error: 'All connection attempts failed for POST FormData',
+      );
+    }
+  }
+
+  Future<Response> put(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    DioException? lastError;
+
+    // Try with the primary URL first
+    try {
+      final response = await _dio.put(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+        cancelToken: cancelToken,
+        onSendProgress: onSendProgress,
+        onReceiveProgress: onReceiveProgress,
+      );
+      return response;
+    } catch (e) {
+      if (e is DioException) {
+        lastError = e;
+        debugPrint('Primary URL failed for PUT: ${e.message}');
+      } else {
+        debugPrint('PUT Error: $e');
+        rethrow;
+      }
+    }
+
+    // If primary URL fails, try fallback URLs
+    if (fallbackUrls.isNotEmpty) {
+      debugPrint('Trying fallback URLs for PUT...');
+
+      for (int i = 0; i < fallbackUrls.length; i++) {
+        final fallbackUrl = fallbackUrls[i];
+        debugPrint('Trying fallback URL for PUT: $fallbackUrl');
+
+        try {
+          final fallbackDio = Dio(BaseOptions(
+            baseUrl: fallbackUrl,
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+            validateStatus: (status) => status != null && status < 500,
+          ));
+
+          final response = await fallbackDio.put(
+            path,
+            data: data,
+            queryParameters: queryParameters,
+            options: options,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          );
+
+          _dio.options.baseUrl = fallbackUrl;
+          _currentActiveUrl = fallbackUrl;
+          debugPrint('PUT successful with fallback URL: $_currentActiveUrl');
+
+          return response;
+        } catch (e) {
+          if (e is DioException) {
+            debugPrint('Fallback URL $fallbackUrl failed for PUT: ${e.message}');
+          } else {
+            debugPrint('Fallback URL $fallbackUrl error for PUT: $e');
+          }
+        }
+      }
+    }
+
+    if (lastError != null) {
+      debugPrint('All URLs failed for PUT. Last error: ${lastError.message}');
+      throw lastError;
+    } else {
+      throw DioException(
+        requestOptions: RequestOptions(path: path),
+        error: 'All connection attempts failed for PUT',
+      );
+    }
+  }
+
+  Future<Response> patch(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    DioException? lastError;
+
+    // Try with the primary URL first
+    try {
+      final response = await _dio.patch(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+        cancelToken: cancelToken,
+        onSendProgress: onSendProgress,
+        onReceiveProgress: onReceiveProgress,
+      );
+      return response;
+    } catch (e) {
+      if (e is DioException) {
+        lastError = e;
+        debugPrint('Primary URL failed for PATCH: ${e.message}');
+      } else {
+        debugPrint('PATCH Error: $e');
+        rethrow;
+      }
+    }
+
+    // If primary URL fails, try fallback URLs
+    if (fallbackUrls.isNotEmpty) {
+      debugPrint('Trying fallback URLs for PATCH...');
+
+      for (int i = 0; i < fallbackUrls.length; i++) {
+        final fallbackUrl = fallbackUrls[i];
+        debugPrint('Trying fallback URL for PATCH: $fallbackUrl');
+
+        try {
+          final fallbackDio = Dio(BaseOptions(
+            baseUrl: fallbackUrl,
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+            validateStatus: (status) => status != null && status < 500,
+          ));
+
+          final response = await fallbackDio.patch(
+            path,
+            data: data,
+            queryParameters: queryParameters,
+            options: options,
+            cancelToken: cancelToken,
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          );
+
+          _dio.options.baseUrl = fallbackUrl;
+          _currentActiveUrl = fallbackUrl;
+          debugPrint('PATCH successful with fallback URL: $_currentActiveUrl');
+
+          return response;
+        } catch (e) {
+          if (e is DioException) {
+            debugPrint('Fallback URL $fallbackUrl failed for PATCH: ${e.message}');
+          } else {
+            debugPrint('Fallback URL $fallbackUrl error for PATCH: $e');
+          }
+        }
+      }
+    }
+
+    if (lastError != null) {
+      debugPrint('All URLs failed for PATCH. Last error: ${lastError.message}');
+      throw lastError;
+    } else {
+      throw DioException(
+        requestOptions: RequestOptions(path: path),
+        error: 'All connection attempts failed for PATCH',
       );
     }
   }

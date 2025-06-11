@@ -1,9 +1,11 @@
 // Team Report Card Widget 
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/network/api_service_provider.dart';
 
-class TeamReportCard extends StatelessWidget {
+class TeamReportCard extends ConsumerWidget {
   final String? imageUrl;
   final String title;
   final String location;
@@ -25,8 +27,26 @@ class TeamReportCard extends StatelessWidget {
     this.onStatusChanged,
   }) : super(key: key);
 
+  String _buildImageUrl(WidgetRef ref, String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return '';
+    
+    final baseUrl = ref.read(apiServiceProvider).baseUrl;
+    
+    // If already a full URL, return as is
+    if (imageUrl.startsWith('http')) return imageUrl;
+    
+    // Get just the filename
+    final filename = imageUrl.split('/').last;
+    
+    // Construct direct URL to the image
+    final fullUrl = '$baseUrl/uploads/$filename';
+    
+    print('Team Card Image URL: $fullUrl');
+    return fullUrl;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       elevation: 2,
@@ -68,8 +88,14 @@ class TeamReportCard extends StatelessWidget {
                       topRight: Radius.circular(12),
                     ),
                     child: Image.network(
-                      imageUrl!,
+                      _buildImageUrl(ref, imageUrl),
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      },
                       errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
                     ),
                   )
