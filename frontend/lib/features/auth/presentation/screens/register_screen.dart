@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:community_repair_hub/config/routes/app_router.dart';
 import 'package:community_repair_hub/features/auth/presentation/providers/auth_provider.dart';
 import 'package:image_picker/image_picker.dart';
-
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -127,7 +127,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     final authState = ref.watch(authNotifierProvider);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -347,3 +346,4 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 }
+
