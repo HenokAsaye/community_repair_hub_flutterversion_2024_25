@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 // Citizen API client is used via the provider
 import '../../../../../shared/models/report.dart';
-import '../../../../dashboard/presentation/providers/citizen_dashboard_provider.dart';
+
 import '../../../../../core/network/api_service_provider.dart';
 
 
 // Provider for fetching a single issue
 final issueDetailProvider = FutureProvider.family<Issue, String>((ref, id) async {
-  final apiClient = ref.read(citizenApiClientProvider);
-  return apiClient.getIssueById(id);
+  final apiService = ref.read(apiServiceProvider);
+  final response = await apiService.get('/citizens/issues/$id');
+  // Assuming the issue is nested under a 'data' key
+  return Issue.fromJson(response.data['data']);
 });
 
 class CitizenDetailScreen extends ConsumerStatefulWidget {

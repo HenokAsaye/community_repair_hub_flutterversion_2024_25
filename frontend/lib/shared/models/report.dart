@@ -47,11 +47,22 @@ class Issue {
         }
       }
       
-      // Handle locations - ensure it's properly parsed
+      // Handle locations - check if it's a List or a Map
       Location locationData;
-      if (json['locations'] != null) {
+      final locationsJson = json['locations'];
+      if (locationsJson != null) {
         try {
-          locationData = Location.fromJson(json['locations']);
+          if (locationsJson is List && locationsJson.isNotEmpty) {
+            // If it's a list, take the first element
+            locationData = Location.fromJson(locationsJson[0]);
+          } else if (locationsJson is Map<String, dynamic>) {
+            // If it's a map, parse it directly
+            locationData = Location.fromJson(locationsJson);
+          } else {
+            // Fallback for other types or empty list
+            print('Locations data is not in a recognized format: $locationsJson');
+            locationData = Location(city: 'Unknown', specificArea: 'Unknown');
+          }
         } catch (e) {
           print('Error parsing location: $e');
           // Fallback to default location if parsing fails

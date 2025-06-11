@@ -1,15 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../shared/models/report.dart';
-import '../../data/citizen_api_client.dart';
-import '../../data/mock_data.dart';
+
 import '../../../../core/network/api_service_provider.dart';
 
-// Citizen API Client provider
-final citizenApiClientProvider = Provider<CitizenApiClient>((ref) {
-  final apiService = ref.watch(apiServiceProvider);
-  return CitizenApiClient(apiService);
-});
+
 
 // Issues state
 enum IssuesStateStatus { initial, loading, success, error }
@@ -90,34 +85,28 @@ class IssuesState {
 
 // Issues notifier provider
 class IssuesNotifier extends StateNotifier<IssuesState> {
-  final CitizenApiClient _apiClient;
   final ApiService _apiService;
 
-  IssuesNotifier(this._apiClient, this._apiService) : super(IssuesState());
+  IssuesNotifier(this._apiService) : super(IssuesState());
 
   Future<void> fetchIssues() async {
     state = state.copyWith(status: IssuesStateStatus.loading);
-    
     try {
-      // Log the base URL
-      print('Attempting to fetch issues from API at ${_apiService.baseUrl}');
+      print('Fetching issues from /citizens/issues');
+      final response = await _apiService.get('/citizens');
       
-      // Fetch issues from the API
-      print('Calling getIssues() method...');
-      final issues = await _apiClient.getIssues();
-      
+      // Assuming the list of issues is nested under a 'data' key
+      final issues = (response.data['data'] as List)
+          .map((issueJson) => Issue.fromJson(issueJson))
+          .toList();
+
       if (issues.isEmpty) {
-        print('API returned empty issues list');
-        print('WARNING: Using mock data instead of real data');
-        final mockIssues = MockDataProvider.getMockIssues();
         state = state.copyWith(
           status: IssuesStateStatus.success,
-          issues: mockIssues,
-          errorMessage: 'No data from server - using mock data',
+          issues: [],
+          errorMessage: 'No issues found.',
         );
       } else {
-        print('API returned ${issues.length} issues');
-        print('First issue: ${issues.isNotEmpty ? issues.first.category : "none"}');
         state = state.copyWith(
           status: IssuesStateStatus.success,
           issues: issues,
@@ -125,13 +114,8 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
         );
       }
     } catch (e) {
-      print('Error fetching issues: $e');
-      print('ERROR DETAILS: ${e.toString()}');
-      print('WARNING: Using mock data as fallback due to error');
-      final mockIssues = MockDataProvider.getMockIssues();
       state = state.copyWith(
         status: IssuesStateStatus.error,
-        issues: mockIssues,
         errorMessage: 'Connection error: ${e.toString()}',
       );
     }
@@ -159,9 +143,14 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
 
   Future<void> searchByCategory(String category) async {
     state = state.copyWith(status: IssuesStateStatus.loading);
-    
     try {
-      final issues = await _apiClient.searchByCategory(category);
+      final response = await _apiService.get(
+        '/citizens/issues/category',
+        queryParameters: {'category': category},
+      );
+      final issues = (response.data['data'] as List)
+          .map((issueJson) => Issue.fromJson(issueJson))
+          .toList();
       
       state = state.copyWith(
         status: IssuesStateStatus.success,
@@ -179,10 +168,15 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
 
   Future<void> searchByLocation(String location) async {
     state = state.copyWith(status: IssuesStateStatus.loading);
-    
     try {
-      final issues = await _apiClient.searchByLocation(location);
-      
+      final response = await _apiService.get(
+        '/citizens/issues/location',
+        queryParameters: {'location': location},
+      );
+      final issues = (response.data['data'] as List)
+          .map((issueJson) => Issue.fromJson(issueJson))
+          .toList();
+
       state = state.copyWith(
         status: IssuesStateStatus.success,
         issues: issues,
@@ -200,9 +194,8 @@ class IssuesNotifier extends StateNotifier<IssuesState> {
 
 // Issues provider
 final issuesProvider = StateNotifierProvider<IssuesNotifier, IssuesState>((ref) {
-  final apiClient = ref.watch(citizenApiClientProvider);
   final apiService = ref.watch(apiServiceProvider);
-  return IssuesNotifier(apiClient, apiService);
+  return IssuesNotifier(apiService);
 });
 
 // Filtered issues provider

@@ -2,8 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'dart:io';
-import '../../../../features/dashboard/data/citizen_api_client.dart';
-import '../../../../features/dashboard/presentation/providers/citizen_dashboard_provider.dart';
+import '../../../../core/network/api_service.dart';
+import '../../../../core/network/api_service_provider.dart';
+
 import '../../../../shared/models/report.dart';
 
 // Report Form State
@@ -35,9 +36,9 @@ class ReportFormState {
 
 // Report Form Notifier
 class ReportFormNotifier extends StateNotifier<ReportFormState> {
-  final CitizenApiClient _apiClient;
+  final ApiService _apiService;
 
-  ReportFormNotifier(this._apiClient) : super(ReportFormState());
+  ReportFormNotifier(this._apiService) : super(ReportFormState());
 
   Future<bool> submitReport({
     required String category,
@@ -51,36 +52,41 @@ class ReportFormNotifier extends StateNotifier<ReportFormState> {
 
     try {
       print('Preparing to submit report with image: ${imageFile.path}');
-      
-      // Get file extension to determine correct MIME type
+
       final fileName = imageFile.path.split('/').last;
+      
       final fileExtension = fileName.split('.').last.toLowerCase();
-      
-      // Map file extension to MIME type
-      String mimeSubtype = 'jpeg';
-      if (fileExtension == 'png') mimeSubtype = 'png';
-      else if (fileExtension == 'gif') mimeSubtype = 'gif';
-      
-      print('File extension: $fileExtension, using MIME type: image/$mimeSubtype');
-      
-      // Convert File to MultipartFile with proper content type
+
+      String mimeSubtype = 'jpeg'; // Default to jpeg
+      if (fileExtension == 'png') {
+        mimeSubtype = 'png';
+      } else if (fileExtension == 'gif') {
+        mimeSubtype = 'gif';
+      }
+
       final multipartFile = await MultipartFile.fromFile(
         imageFile.path,
         filename: fileName,
         contentType: MediaType('image', mimeSubtype),
       );
-      
-      print('Created MultipartFile with filename: $fileName and content type: image/$mimeSubtype');
+
+      final formData = FormData.fromMap({
+        'category': category,
+        'description': description,
+        'city': city,
+        'specificAddress': specificAddress,
+        'issueDate': issueDate.toIso8601String(),
+        'image': multipartFile,
+      });
 
       // Submit the report
-      final issue = await _apiClient.reportIssue(
-        category: category,
-        city: city,
-        specificAddress: specificAddress,
-        description: description,
-        issueDate: issueDate,
-        imageFile: multipartFile,
+      final response = await _apiService.postFormData(
+        '/citizens/report',
+        formData: formData,
       );
+
+      // Assuming the created issue is nested under a 'data' key
+      final issue = Issue.fromJson(response.data['data']);
 
       // Update state with success
       state = state.copyWith(
@@ -108,6 +114,6 @@ class ReportFormNotifier extends StateNotifier<ReportFormState> {
 
 // Provider
 final reportFormProvider = StateNotifierProvider<ReportFormNotifier, ReportFormState>((ref) {
-  final apiClient = ref.watch(citizenApiClientProvider);
-  return ReportFormNotifier(apiClient);
+  final apiService = ref.watch(apiServiceProvider);
+  return ReportFormNotifier(apiService);
 });
