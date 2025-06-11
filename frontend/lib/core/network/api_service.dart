@@ -12,7 +12,7 @@ class ApiService {
     _currentActiveUrl = baseUrl,
     _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 15),  // Increased timeout
+    connectTimeout: const Duration(seconds: 15), 
     receiveTimeout: const Duration(seconds: 15),  
     validateStatus: (status) => status != null && status < 500,
   )) {
